@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#7559ff">
+  <title>人机鉴定所</title>
+  <style>
+    :root { --ink:#28243d; --muted:#837d9f; --purple:#7559ff; --purple2:#9a7cff; --paper:#fff; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin:0; min-height:100%; font-family:"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); }
+    body { min-height:100dvh; overflow-x:hidden; background:linear-gradient(145deg,#f7f2ff 0%,#e9f4ff 52%,#fff2ef 100%); }
+    body::before, body::after { content:""; position:fixed; border-radius:50%; filter:blur(2px); opacity:.6; pointer-events:none; }
+    body::before { width:220px;height:220px;background:#c8b8ff;right:-85px;top:-70px; }
+    body::after { width:180px;height:180px;background:#ffc5ba;left:-80px;bottom:-70px; }
+    .app { position:relative; z-index:1; width:min(100%,480px); min-height:100dvh; margin:auto; padding:max(22px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom)); display:flex; flex-direction:column; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+    .brand { font-weight:900; letter-spacing:.08em; }
+    .counter { font-size:13px; font-weight:700; color:var(--purple); background:#fff; padding:7px 12px; border-radius:999px; box-shadow:0 5px 18px #684bd31c; }
+    .progress { height:7px; background:#ffffffa8; border-radius:9px; overflow:hidden; margin-bottom:34px; }
+    .progress > i { display:block; height:100%; width:25%; border-radius:inherit; background:linear-gradient(90deg,var(--purple),#b35cff); transition:width .35s ease; }
+    .quiz { flex:1; display:flex; flex-direction:column; }
+    .eyebrow { color:var(--purple); font-weight:800; font-size:13px; letter-spacing:.14em; margin:0 0 12px; }
+    h1 { font-size:clamp(27px,8vw,38px); line-height:1.25; letter-spacing:-.03em; margin:0 0 34px; }
+    .options { display:grid; gap:15px; position:relative; min-height:178px; }
+    .option { width:100%; min-height:76px; padding:16px 18px; border:2px solid transparent; border-radius:22px; background:#ffffffdc; box-shadow:0 10px 35px #4c3d7d14; display:flex; align-items:center; gap:15px; color:var(--ink); font:700 18px inherit; text-align:left; cursor:pointer; transition:transform .18s, border-color .18s, background .18s, opacity .18s; touch-action:manipulation; }
+    .option:active { transform:scale(.98); }
+    .option.selected { border-color:var(--purple); background:#f3efff; box-shadow:0 12px 34px #7559ff2b; }
+    .option.disabled { opacity:.38; cursor:not-allowed; }
+    .letter { flex:0 0 42px; height:42px; display:grid; place-items:center; border-radius:14px; background:#eeeaff; color:var(--purple); font-size:16px; }
+    .option.selected .letter { color:#fff; background:linear-gradient(135deg,var(--purple),var(--purple2)); }
+    .confirm { margin-top:auto; width:100%; min-height:58px; border:0; border-radius:19px; color:#fff; background:linear-gradient(135deg,var(--purple),#9b64ff); box-shadow:0 13px 30px #7559ff4a; font:800 17px inherit; cursor:pointer; transition:filter .2s, transform .2s; }
+    .confirm:active:not(:disabled), .restart:active { transform:scale(.98); }
+    .confirm:disabled { cursor:not-allowed; color:#aaa5bb; background:#dedbe8; box-shadow:none; }
+    .modal { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:24px; background:#29223f66; backdrop-filter:blur(8px); opacity:0; visibility:hidden; transition:.2s; }
+    .modal.show { opacity:1; visibility:visible; }
+    .dialog { width:min(100%,340px); padding:26px; border-radius:27px; background:#fff; text-align:center; box-shadow:0 25px 70px #30235255; transform:translateY(12px) scale(.97); transition:.2s; }
+    .modal.show .dialog { transform:none; }
+    .dialog-icon { width:58px;height:58px;margin:0 auto 15px;display:grid;place-items:center;border-radius:20px;background:#f0ebff;font-size:27px; }
+    .dialog h2 { margin:0 0 22px; font-size:20px; }
+    .no-btn { width:100%; min-height:52px; border:0; border-radius:16px; background:var(--purple); color:#fff; font:800 16px inherit; cursor:pointer; }
+    .result { display:none; flex:1; flex-direction:column; animation:rise .45s ease; }
+    .result.show { display:flex; }
+    .quiz.hide, .topbar.hide, .progress.hide { display:none; }
+    .trophy { width:78px;height:78px;display:grid;place-items:center;margin:12px 0 23px;border-radius:26px;background:linear-gradient(135deg,#fff1a7,#ffbd62);box-shadow:0 14px 38px #e99b2d3b;font-size:40px;transform:rotate(-4deg); }
+    .result h1 { margin-bottom:12px; }
+    .result-sub { margin:0 0 26px; color:var(--muted); }
+    .answer-list { display:grid; gap:12px; margin-bottom:25px; }
+    .answer-item { padding:16px; border-radius:18px; background:#ffffffd9; box-shadow:0 8px 25px #4c3d7d10; }
+    .answer-item small { display:block;color:var(--muted);font-size:12px;margin-bottom:7px; }
+    .answer-item strong { display:block;font-size:15px;line-height:1.45; }
+    .answer-item span { display:block;color:var(--purple);font-weight:800;margin-top:5px; }
+    .restart { margin-top:auto; width:100%; min-height:58px; border:0; border-radius:19px; background:var(--ink); color:#fff; font:800 17px inherit; cursor:pointer; }
+    .runner { position:fixed!important; z-index:8; width:min(208px,44vw)!important; min-height:64px!important; transition:left .23s ease, top .23s ease, opacity .23s ease, transform .23s ease!important; }
+    @keyframes rise { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+    @media (max-height:660px) { .app{padding-top:16px}.topbar{margin-bottom:16px}.progress{margin-bottom:22px}h1{margin-bottom:22px}.option{min-height:64px}.options{min-height:150px} }
+    @media (prefers-reduced-motion:reduce) { *{scroll-behavior:auto!important;animation:none!important;transition:none!important} }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar"><div class="brand">小稳神真厉害</div><div class="counter" id="counter">1 / 4</div></header>
+    <div class="progress"><i id="progressBar"></i></div>
+    <section class="quiz" id="quiz">
+      <p class="eyebrow" id="eyebrow">QUESTION 01</p>
+      <h1 id="question"></h1>
+      <div class="options" id="options"></div>
+      <button class="confirm" id="confirm" disabled>确认答案</button>
+    </section>
+    <section class="result" id="result">
+      <div class="trophy">🏆</div>
+      <h1>恭喜你正确地回答了所有问题！</h1>
+      <p class="result-sub">这是你的本次答题记录</p>
+      <div class="answer-list" id="answerList"></div>
+      <button class="restart" id="restart">重新答题</button>
+    </section>
+  </main>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <div class="dialog"><div class="dialog-icon">🤔</div><h2 id="dialogTitle">确认选择这个答案吗？</h2><button class="no-btn" id="noBtn">否</button></div>
+  </div>
+  <script>
+    const questions = [
+      { text:'小稳神是不是人机？', options:['是','不是'] },
+      { text:'软镯是不是人机？', options:['是','是'] },
+      { text:'小稳神是不是傻子？', options:['不是','不是'] },
+      { text:'你认为这个游戏好玩吗？', options:['不好玩','好玩'] }
+    ];
+    const state = { index:0, selected:null, answers:[], firstADisabled:false, dodgeCount:0 };
+    const $ = id => document.getElementById(id);
+    const quiz=$('quiz'), result=$('result'), options=$('options'), confirmBtn=$('confirm'), modal=$('modal');
+
+    function renderQuestion() {
+      const q=questions[state.index];
+      $('question').textContent=q.text;
+      $('eyebrow').textContent=`QUESTION ${String(state.index+1).padStart(2,'0')}`;
+      $('counter').textContent=`${state.index+1} / ${questions.length}`;
+      $('progressBar').style.width=`${(state.index+1)/questions.length*100}%`;
+      options.innerHTML=''; state.selected=null; confirmBtn.disabled=true;
+      q.options.forEach((text,i)=>{
+        const btn=document.createElement('button');
+        btn.className='option'; btn.dataset.index=i;
+        btn.innerHTML=`<span class="letter">${i===0?'A':'B'}</span><span>${text}</span>`;
+        if(state.index===0 && i===0 && state.firstADisabled){ btn.classList.add('disabled'); btn.disabled=true; }
+        btn.addEventListener('click',()=>choose(i,btn)); options.appendChild(btn);
+      });
+    }
+    function choose(i,btn) {
+      if(state.index===3 && i===0){ dodge(btn); return; }
+      state.selected=i;
+      options.querySelectorAll('.option').forEach(x=>x.classList.toggle('selected',x===btn));
+      confirmBtn.disabled=false;
+    }
+    function dodge(btn) {
+      state.dodgeCount++;
+      btn.classList.add('runner');
+      if(state.dodgeCount>=3){
+        const left=Math.random()<.5 ? -btn.offsetWidth-30 : innerWidth+30;
+        btn.style.left=`${left}px`; btn.style.top=`${Math.round(innerHeight*.45)}px`; btn.style.opacity='0';
+        setTimeout(()=>btn.remove(),260); return;
+      }
+      const pad=12, w=Math.min(208,innerWidth*.44), h=64;
+      const x=Math.max(pad,Math.random()*(innerWidth-w-pad*2)+pad);
+      const y=Math.max(pad,Math.random()*(innerHeight-h-pad*2)+pad);
+      btn.style.left=`${x}px`; btn.style.top=`${y}px`;
+    }
+    confirmBtn.addEventListener('click',()=>{
+      if(state.selected===null)return;
+      if(state.index===0 && state.selected===0){ modal.classList.add('show'); return; }
+      saveAndNext();
+    });
+    $('noBtn').addEventListener('click',()=>{
+      modal.classList.remove('show'); state.firstADisabled=true; state.selected=1;
+      const btns=options.querySelectorAll('.option');
+      btns[0].disabled=true; btns[0].classList.add('disabled'); btns[0].classList.remove('selected');
+      btns[1].classList.add('selected'); confirmBtn.disabled=false;
+    });
+    function saveAndNext(){
+      const q=questions[state.index];
+      state.answers.push({question:q.text,answer:`${state.selected===0?'A':'B'}. ${q.options[state.selected]}`});
+      state.index++;
+      if(state.index<questions.length) renderQuestion(); else showResult();
+    }
+    function showResult(){
+      quiz.classList.add('hide'); document.querySelector('.topbar').classList.add('hide'); document.querySelector('.progress').classList.add('hide');
+      $('answerList').innerHTML=state.answers.map((x,i)=>`<div class="answer-item"><small>第 ${i+1} 题</small><strong>${x.question}</strong><span>${x.answer}</span></div>`).join('');
+      result.classList.add('show'); scrollTo({top:0,behavior:'smooth'});
+    }
+    $('restart').addEventListener('click',()=>{
+      Object.assign(state,{index:0,selected:null,answers:[],firstADisabled:false,dodgeCount:0});
+      result.classList.remove('show'); quiz.classList.remove('hide'); document.querySelector('.topbar').classList.remove('hide'); document.querySelector('.progress').classList.remove('hide'); renderQuestion();
+    });
+    renderQuestion();
+  </script>
+</body>
+</html>
